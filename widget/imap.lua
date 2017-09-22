@@ -27,6 +27,7 @@ local function factory(args)
     local is_plain  = args.is_plain or false
     local followtag = args.followtag or false
     local notify    = args.notify or "on"
+	local subfolders = args.subfolder or {}
     local settings  = args.settings or function() end
 
     local head_command = "curl --connect-timeout 3 -fsm 3"
@@ -40,7 +41,7 @@ local function factory(args)
         if type(password) == "string" or type(password) == "table" then
             helpers.async(password, function(f) password = f:gsub("\n", "") end)
         elseif type(password) == "function" then
-            local p = password()
+            password = password()
         end
     end
 
@@ -54,8 +55,14 @@ local function factory(args)
             mail_notification_preset.screen = awful.screen.focused()
         end
 
-        curl = string.format("%s --url imaps://%s:%s/INBOX -u %s:%q %s -k",
-               head_command, server, port, mail, password, request)
+		local url = string.format("--url imaps://%s:%s/INBOX", server, port)
+
+		for key,subfolder in ipairs(subfolders) do
+		   url = url .. " " ..  string.format("imaps://%s:%s/INBOX.%s", server, port, subfolder)
+		end
+
+        curl = string.format("%s %s -u %s:%q %s -k",
+							 head_command, url, mail, password, request)
 
         helpers.async(curl, function(f)
             _, mailcount = string.gsub(f, "%d+", "")
